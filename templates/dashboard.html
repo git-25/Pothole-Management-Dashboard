@@ -136,7 +136,7 @@
       const infowindow = new kakao.maps.InfoWindow({ content: infoContent });
       infowindows[p.id] = infowindow;
 
-      kakao.maps.event.addListener(markerPosition, 'click', function() {
+      kakao.maps.event.addListener(marker, 'click', function() {
         const isOpen = infowindow.getMap();
         closeAllInfoWindows();
         if (!isOpen) infowindow.open(map, markerPosition);
