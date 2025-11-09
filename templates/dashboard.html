@@ -100,6 +100,17 @@
     drawChart(data);
   }
 
+  function createMarker(color) {
+    const markerEl = document.createElement('div');
+    markerEl.style.width = '16px';
+    markerEl.style.height = '16px';
+    markerEl.style.borderRadius = '50%';
+    markerEl.style.background = color;
+    markerEl.style.border = '2px solid white';
+    markerEl.style.boxShadow = '0 0 3px rgba(0,0,0,0.5)';
+    return markerEl;
+  }
+
   function renderMarkers(data) {
     for (let id in markers) markers[id].setMap(null);
     markers = {};
@@ -108,33 +119,38 @@
     data.forEach(p => {
       const pos = new kakao.maps.LatLng(p.latitude, p.longitude);
       const color = p.status === "Resolved" ? "#4CAF50" : "#F44336";
+      const markerEl = createMarker(color);
 
-      const marker = new kakao.maps.Marker({
+      const marker = new kakao.maps.CustomOverlay({
         position: pos,
-        map: map,
-        image: new kakao.maps.MarkerImage(
-          `https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_${color === "#4CAF50" ? 'green' : 'red'}.png`,
-          new kakao.maps.Size(24, 35)
-        )
+        content: markerEl,
+        yAnchor: 1
       });
-
-      const info = `
-        <div style="padding:8px;font-size:13px;">
-          <b>ID:</b> ${p.id}<br>
-          <b>심각도:</b> ${p.severity}<br>
-          <b>상태:</b> ${p.status === "Resolved" ? "처리 완료" : "미처리"}
-        </div>
-      `;
-      const infowindow = new kakao.maps.InfoWindow({ content: info });
-      infowindows[p.id] = infowindow;
-
-      kakao.maps.event.addListener(marker, 'click', () => {
-        const isOpen = infowindow.getMap();
-        closeAllInfoWindows();
-        if (!isOpen) infowindow.open(map, marker);
-      });
-
+      marker.setMap(map);
       markers[p.id] = marker;
+
+      geocoder.coord2RegionCode(p.longitude, p.latitude, (result, status) => {
+        if (status === kakao.maps.services.Status.OK) {
+          const region = result.find(r => r.region_type === "H");
+          const dong = region ? region.region_3depth_name : "알 수 없음";
+
+          const infoContent = `
+            <div style="padding:10px; font-size:13px;">
+              <b>${dong}</b><br>
+              심각도: ${p.severity}<br>
+              상태: ${p.status === "Resolved" ? "처리 완료" : "미처리"}
+            </div>
+          `;
+          const infowindow = new kakao.maps.InfoWindow({ content: infoContent });
+          infowindows[p.id] = infowindow;
+
+          markerEl.addEventListener('click', () => {
+            const isOpen = infowindow.getMap();
+            closeAllInfoWindows();
+            if (!isOpen) infowindow.open(map, pos);
+          });
+        }
+      });
     });
   }
 
@@ -142,14 +158,13 @@
     for (let id in infowindows) infowindows[id].close();
   }
 
-  // 도로명 주소
   function renderCoords(data) {
     const list = document.getElementById('coordList');
     list.innerHTML = "";
 
     data.forEach(p => {
       const li = document.createElement('li');
-      li.textContent = ` ${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)} (주소 불러오는 중...)`;
+      li.textContent = ` 주소 변환 중...`;
       list.appendChild(li);
 
       geocoder.coord2Address(p.longitude, p.latitude, (result, status) => {
