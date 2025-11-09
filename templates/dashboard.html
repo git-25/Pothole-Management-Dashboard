@@ -13,16 +13,15 @@
       font-family: 'Arial', sans-serif;
       margin: 0;
       background-color: #f5f6fa;
+      text-align: center;
     }
     h2 {
-      text-align: center;
       margin: 20px 0;
     }
     .container {
       display: grid;
       grid-template-columns: 1fr 2fr;
-      grid-template-rows: auto 1fr;
-      gap: 15px;
+      gap: 20px;
       padding: 20px;
       height: 90vh;
     }
@@ -32,7 +31,7 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
       padding: 15px;
     }
-    #chart { width: 100%; height: 250px; }
+    #chart { width: 100%; height: 280px; }
     #map { width: 100%; height: 100%; border-radius: 10px; }
     #coords {
       font-size: 14px;
@@ -54,7 +53,7 @@
   <h2>포트홀 관리 대시보드</h2>
 
   <div class="container">
-    <!-- 왼쪽: 차트, 포트홀 좌표 -->
+    <!-- 왼쪽: 차트 + 좌표 -->
     <div>
       <div class="card">
         <h3>포트홀 처리 현황</h3>
@@ -76,13 +75,13 @@
   <script>
   let map;
   let markers = {};
+  let infowindows = {}; // 현재 열린 인포윈도우 저장용
 
   window.onload = async function() {
     if (typeof kakao === 'undefined') {
       alert("카카오맵을 불러오기 실패 (API Key 또는 도메인 설정 확인)");
       return;
     }
-
     initMap();
     await fetchAndRender();
     setInterval(fetchAndRender, 5000);
@@ -91,8 +90,8 @@
   function initMap() {
     const container = document.getElementById('map');
     const options = {
-      center: new kakao.maps.LatLng(37.7599, 126.7778), 
-      level: 6
+      center: new kakao.maps.LatLng(37.7599, 126.7778), // 파주시청 중심
+      level: 8
     };
     map = new kakao.maps.Map(container, options);
   }
@@ -107,28 +106,49 @@
   }
 
   function renderMarkers(data) {
-    // 이전 마커 제거
     for (let id in markers) markers[id].setMap(null);
     markers = {};
+    infowindows = {};
 
     data.forEach(p => {
+      const markerPosition = new kakao.maps.LatLng(p.latitude, p.longitude);
+      const markerColor = p.status === "Resolved" ? "#4CAF50" : "#F44336"; // 초록/빨강 구분
+
       const marker = new kakao.maps.Marker({
         map: map,
-        position: new kakao.maps.LatLng(p.latitude, p.longitude)
+        position: markerPosition,
+        image: new kakao.maps.MarkerImage(
+          `https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png`,
+          new kakao.maps.Size(24, 35),
+          {offset: new kakao.maps.Point(12, 35)}
+        )
       });
+
       markers[p.id] = marker;
 
-      const info = `
-        <div style="padding:10px;">
+      const infoContent = `
+        <div style="padding:10px; font-size:13px;">
           <b>ID:</b> ${p.id}<br>
           <b>심각도:</b> ${p.severity}<br>
-          <b>상태:</b> ${p.status}<br>
-          ${p.image_url ? `<img src="${p.image_url}" width="100">` : ""}
+          <b>상태:</b> ${p.status === "Resolved" ? "처리 완료" : "미처리"}
         </div>
       `;
-      const infowindow = new kakao.maps.InfoWindow({ content: info });
-      kakao.maps.event.addListener(marker, 'click', () => infowindow.open(map, marker));
+
+      const infowindow = new kakao.maps.InfoWindow({ content: infoContent });
+      infowindows[p.id] = infowindow;
+
+      kakao.maps.event.addListener(marker, 'click', function() {
+        const isOpen = infowindow.getMap();
+        closeAllInfoWindows();
+        if (!isOpen) infowindow.open(map, marker);
+      });
     });
+  }
+
+  function closeAllInfoWindows() {
+    for (let id in infowindows) {
+      infowindows[id].close();
+    }
   }
 
   function renderCoords(data) {
@@ -136,7 +156,7 @@
     list.innerHTML = "";
     data.forEach(p => {
       const li = document.createElement('li');
-      li.textContent = `${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)} (${p.status})`;
+      li.textContent = `📍 ${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)} (${p.status === "Resolved" ? "처리 완료" : "미처리"})`;
       list.appendChild(li);
     });
   }
@@ -158,6 +178,9 @@
       },
       options: {
         plugins: {
+          legend: {
+            labels: { font: { size: 14 } }
+          },
           title: { display: true, text: '포트홀 처리 현황' }
         }
       }
