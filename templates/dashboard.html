@@ -15,13 +15,50 @@
       background-color: #f5f6fa;
       text-align: center;
     }
-    h2 { margin: 20px 0; }
+    h2 { margin: 15px 0; }
+
+    /* 검색창 스타일 */
+    #search-bar {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 5px;
+    }
+    #search-input {
+      width: 300px;
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    #search-btn {
+      padding: 8px 14px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #search-btn:hover {
+      background-color: #45a049;
+    }
+
+    /* 클릭 주소 표시 */
+    #clicked-address {
+      font-size: 14px;
+      color: #333;
+      margin-top: 5px;
+    }
+
+    /* 전체 레이아웃 */
     .container {
       display: grid;
       grid-template-columns: 1fr 2fr;
       gap: 20px;
       padding: 20px;
-      height: 90vh;
+      height: 88vh;
     }
     .card {
       background: white;
@@ -30,7 +67,7 @@
       padding: 15px;
     }
     #chart { width: 100%; height: 280px; }
-    #map { width: 100%; height: 100%; border-radius: 10px; }
+    #map { width: 100%; height: 100%; border-radius: 10px; cursor: crosshair; }
     #coords {
       font-size: 14px;
       overflow-y: auto;
@@ -47,6 +84,14 @@
 </head>
 <body>
   <h2>포트홀 관리 대시보드</h2>
+
+  <div id="search-bar">
+    <div style="display:flex;gap:5px;">
+      <input id="search-input" type="text" placeholder="예: 파주시 금촌동 978-11">
+      <button id="search-btn">검색</button>
+    </div>
+    <div id="clicked-address"> 지도에서 위치를 클릭하면 주소가 여기에 표시됩니다.</div>
+  </div>
 
   <div class="container">
     <div>
@@ -71,6 +116,7 @@
   let markers = {};
   let infowindows = {};
   let geocoder;
+  let ps;
 
   window.onload = async function() {
     if (typeof kakao === 'undefined') {
@@ -78,9 +124,15 @@
       return;
     }
     geocoder = new kakao.maps.services.Geocoder();
+    ps = new kakao.maps.services.Places();
     initMap();
     await fetchAndRender();
     setInterval(fetchAndRender, 5000);
+
+    document.getElementById("search-btn").addEventListener("click", searchAddress);
+    document.getElementById("search-input").addEventListener("keydown", e => {
+      if (e.key === "Enter") searchAddress();
+    });
   };
 
   function initMap() {
@@ -90,6 +142,25 @@
       level: 8
     };
     map = new kakao.maps.Map(container, options);
+
+    kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
+      const latlng = mouseEvent.latLng;
+      showClickedAddress(latlng);
+    });
+  }
+
+  function showClickedAddress(latlng) {
+    geocoder.coord2Address(latlng.getLng(), latlng.getLat(), (result, status) => {
+      const addrBox = document.getElementById("clicked-address");
+      if (status === kakao.maps.services.Status.OK) {
+        const addr = result[0]?.road_address?.address_name || result[0]?.address?.address_name || "주소 정보 없음";
+        addrBox.textContent = ` 클릭한 위치: ${addr}`;
+        addrBox.style.color = "#000";
+      } else {
+        addrBox.textContent = "주소를 불러오지 못했습니다.";
+        addrBox.style.color = "red";
+      }
+    });
   }
 
   async function fetchAndRender() {
@@ -108,6 +179,7 @@
     markerEl.style.background = color;
     markerEl.style.border = '2px solid white';
     markerEl.style.boxShadow = '0 0 3px rgba(0,0,0,0.5)';
+    markerEl.style.cursor = 'pointer';
     return markerEl;
   }
 
@@ -137,8 +209,8 @@
           const infoContent = `
             <div style="padding:10px; font-size:13px;">
               <b>${dong}</b><br>
-              심각도: ${p.severity}<br>
-              상태: ${p.status === "Resolved" ? "처리 완료" : "미처리"}
+              상태: ${p.status === "Resolved" ? "처리 완료" : "미처리"}<br>
+              심각도: ${p.severity}
             </div>
           `;
           const infowindow = new kakao.maps.InfoWindow({ content: infoContent });
@@ -170,9 +242,25 @@
       geocoder.coord2Address(p.longitude, p.latitude, (result, status) => {
         if (status === kakao.maps.services.Status.OK) {
           const addr = result[0]?.road_address?.address_name || result[0]?.address?.address_name || "주소 정보 없음";
-          li.textContent = ` ${addr} (${p.status === "Resolved" ? "처리 완료" : "미처리"})`;
+          li.textContent = ` ${addr} (${p.status === "Resolved" ? "처리 완료" : "미처리"}, ${p.severity})`;
         }
       });
+    });
+  }
+
+  function searchAddress() {
+    const keyword = document.getElementById("search-input").value.trim();
+    if (!keyword) return alert("검색어를 입력하세요.");
+
+    ps.keywordSearch(keyword, (data, status) => {
+      if (status === kakao.maps.services.Status.OK) {
+        const first = data[0];
+        const moveLatLon = new kakao.maps.LatLng(first.y, first.x);
+        map.setLevel(4);
+        map.panTo(moveLatLon);
+      } else {
+        alert("검색 결과가 없습니다.");
+      }
     });
   }
 
