@@ -87,7 +87,7 @@
 
   <div id="search-bar">
     <div style="display:flex;gap:5px;">
-      <input id="search-input" type="text" placeholder="예: 파주시청">
+      <input id="search-input" type="text" placeholder="예: 파주시 금촌동 978-11">
       <button id="search-btn">검색</button>
     </div>
     <div id="clicked-address"> 지도에서 위치를 클릭하면 주소가 여기에 표시됩니다.</div>
@@ -129,6 +129,7 @@
     await fetchAndRender();
     setInterval(fetchAndRender, 5000);
 
+    // 검색 이벤트 등록
     document.getElementById("search-btn").addEventListener("click", searchAddress);
     document.getElementById("search-input").addEventListener("keydown", e => {
       if (e.key === "Enter") searchAddress();
@@ -154,7 +155,7 @@
       const addrBox = document.getElementById("clicked-address");
       if (status === kakao.maps.services.Status.OK) {
         const addr = result[0]?.road_address?.address_name || result[0]?.address?.address_name || "주소 정보 없음";
-        addrBox.textContent = ` 클릭한 위치: ${addr}`;
+        addrBox.textContent = `📍 클릭한 위치: ${addr}`;
         addrBox.style.color = "#000";
       } else {
         addrBox.textContent = "주소를 불러오지 못했습니다.";
@@ -171,73 +172,57 @@
     drawChart(data);
   }
 
-  function createMarker(color) {
-    const markerEl = document.createElement('div');
-    markerEl.style.width = '16px';
-    markerEl.style.height = '16px';
-    markerEl.style.borderRadius = '50%';
-    markerEl.style.background = color;
-    markerEl.style.border = '2px solid white';
-    markerEl.style.boxShadow = '0 0 3px rgba(0,0,0,0.5)';
-    markerEl.style.cursor = 'pointer';
-    return markerEl;
-  }
-  
   function renderMarkers(data) {
-  for (let id in markers) markers[id].setMap(null);
-  markers = {};
-  infowindows = {};
+    for (let id in markers) markers[id].setMap(null);
+    markers = {};
+    infowindows = {};
 
-  data.forEach(p => {
-    const pos = new kakao.maps.LatLng(p.latitude, p.longitude);
-    const color = p.status === "Resolved" ? "#4CAF50" : "#F44336";
+    data.forEach(p => {
+      const pos = new kakao.maps.LatLng(p.latitude, p.longitude);
+      const color = p.status === "Resolved" ? "#4CAF50" : "#F44336";
 
-    const markerEl = document.createElement('div');
-    markerEl.style.width = '16px';
-    markerEl.style.height = '16px';
-    markerEl.style.borderRadius = '50%';
-    markerEl.style.background = color;
-    markerEl.style.border = '2px solid white';
-    markerEl.style.boxShadow = '0 0 3px rgba(0,0,0,0.5)';
-    markerEl.style.cursor = 'pointer';
+      const markerImageSrc = `data:image/svg+xml;charset=utf-8,
+        <svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'>
+          <circle cx='10' cy='10' r='7' fill='${color}' stroke='white' stroke-width='2'/>
+        </svg>`;
+      const markerImage = new kakao.maps.MarkerImage(markerImageSrc, new kakao.maps.Size(20, 20));
 
-    const marker = new kakao.maps.CustomOverlay({
-      position: pos,
-      content: markerEl,
-      yAnchor: 1
+      const marker = new kakao.maps.Marker({
+        position: pos,
+        image: markerImage,
+        map: map
+      });
+
+      markers[p.id] = marker;
+
+      geocoder.coord2RegionCode(p.longitude, p.latitude, (result, status) => {
+        if (status === kakao.maps.services.Status.OK) {
+          const region = result.find(r => r.region_type === "H");
+          const dong = region ? region.region_3depth_name : "알 수 없음";
+
+          const infoContent = `
+            <div style="padding:10px; font-size:13px;">
+              <b>${dong}</b><br>
+              상태: ${p.status === "Resolved" ? "처리 완료" : "미처리"}<br>
+              심각도: ${p.severity}
+            </div>
+          `;
+          const infowindow = new kakao.maps.InfoWindow({ content: infoContent });
+          infowindows[p.id] = infowindow;
+
+          kakao.maps.event.addListener(marker, 'click', function () {
+            const isOpen = infowindow.getMap();
+            closeAllInfoWindows();
+            if (!isOpen) infowindow.open(map, marker);
+          });
+        }
+      });
     });
-    marker.setMap(map);
-    markers[p.id] = marker;
+  }
 
-    geocoder.coord2RegionCode(p.longitude, p.latitude, (result, status) => {
-      if (status === kakao.maps.services.Status.OK) {
-        const region = result.find(r => r.region_type === "H");
-        const dong = region ? region.region_3depth_name : "알 수 없음";
-
-        const infoContent = `
-          <div style="padding:10px; font-size:13px;">
-            <b>${dong}</b><br>
-            상태: ${p.status === "Resolved" ? "처리 완료" : "미처리"}<br>
-            심각도: ${p.severity}
-          </div>
-        `;
-        const infowindow = new kakao.maps.InfoWindow({ content: infoContent });
-        infowindows[p.id] = infowindow;
-
-        kakao.maps.event.addDomListener(markerEl, 'click', function () {
-          const isOpen = infowindow.getMap();
-          closeAllInfoWindows();
-          if (!isOpen) infowindow.open(map, marker);
-        });
-      }
-    });
-  });
-}
-
-function closeAllInfoWindows() {
-  for (let id in infowindows) infowindows[id].close();
-}
-
+  function closeAllInfoWindows() {
+    for (let id in infowindows) infowindows[id].close();
+  }
 
   function renderCoords(data) {
     const list = document.getElementById('coordList');
