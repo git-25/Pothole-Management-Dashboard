@@ -155,7 +155,7 @@
       const addrBox = document.getElementById("clicked-address");
       if (status === kakao.maps.services.Status.OK) {
         const addr = result[0]?.road_address?.address_name || result[0]?.address?.address_name || "주소 정보 없음";
-        addrBox.textContent = `📍 클릭한 위치: ${addr}`;
+        addrBox.textContent = ` 클릭한 위치: ${addr}`;
         addrBox.style.color = "#000";
       } else {
         addrBox.textContent = "주소를 불러오지 못했습니다.";
