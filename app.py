@@ -7,13 +7,13 @@ app = Flask(__name__)
 api_key = os.getenv("KAKAO_API_KEY")
 
 pothole_data = [
-    {"id": "p1", "latitude": 37.756185, "longitude": 126.768615, "severity": "High", "status": "Resolved"},
-    {"id": "p2", "latitude": 37.751426, "longitude": 126.750812, "severity": "Low", "status": "Unresolved"},
-    {"id": "p3", "latitude": 37.732988, "longitude": 126.735041, "severity": "Medium", "status": "Resolved"},
-    {"id": "p4", "latitude": 37.718336, "longitude": 126.763476, "severity": "Low", "status": "Unresolved"},
-    {"id": "p5", "latitude": 37.766131, "longitude": 126.795347, "severity": "High", "status": "Unresolved"},
-    {"id": "p6", "latitude": 37.746076, "longitude": 126.800266, "severity": "Medium", "status": "Resolved"},
-    {"id": "p7", "latitude": 37.870886, "longitude": 126.787956, "severity": "High", "status": "Resolved"},
+    {"id": "p1", "latitude": 35.203218, "longitude": 129.085478, "severity": "High", "status": "Resolved"},
+    {"id": "p2", "latitude": 35.160402, "longitude": 128.984210, "severity": "Low", "status": "Unresolved"},
+    {"id": "p3", "latitude": 35.158533, "longitude": 128.979650, "severity": "Medium", "status": "Resolved"},
+    {"id": "p4", "latitude": 35.154147, "longitude": 128.986646, "severity": "Low", "status": "Unresolved"},
+    {"id": "p5", "latitude": 35.168642, "longitude": 128.980354, "severity": "High", "status": "Unresolved"},
+    {"id": "p6", "latitude": 35.166955, "longitude": 128.988790, "severity": "Medium", "status": "Resolved"},
+    {"id": "p7", "latitude": 35.168940, "longitude": 128.976166, "severity": "High", "status": "Resolved"},
     {"id": "p8", "latitude": 37.880694, "longitude": 126.792158, "severity": "High", "status": "Resolved"},
     {"id": "p9", "latitude": 37.862573, "longitude": 126.806002, "severity": "Medium", "status": "Unresolved"},
     {"id": "p10", "latitude": 37.882585, "longitude": 126.771994, "severity": "Medium", "status": "Resolved"},
